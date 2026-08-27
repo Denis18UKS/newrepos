@@ -8,6 +8,7 @@ public final class PhotoPuzzlePacketIds {
     public static final Identifier CREATE_AND_CAPTURE = PuzzleEscape.id("gui_create_capture");
     public static final Identifier RECAPTURE = PuzzleEscape.id("gui_recapture");
     public static final Identifier GIVE_CANVAS = PuzzleEscape.id("gui_give_canvas");
+    public static final Identifier GIVE_PIECES = PuzzleEscape.id("gui_give_pieces");
 
     private PhotoPuzzlePacketIds() {}
 }
