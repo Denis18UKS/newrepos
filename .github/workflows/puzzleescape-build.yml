@@ -22,6 +22,7 @@ jobs:
           gzip -t PuzzleEscape-build-src.tar.gz
           mkdir project
           tar -xzf PuzzleEscape-build-src.tar.gz -C project
+          sed -i 's/^mod_version=.*/mod_version=1.0.2-1.20.1/' project/gradle.properties
 
       - name: Apply 1.20.1 packet signature fixes
         run: |
@@ -80,11 +81,16 @@ jobs:
           translations = {
               'ru_ru.json': {
                   'screen.puzzleescape.library.title': 'PuzzleEscape — Фотопазлы',
-                  'screen.puzzleescape.library.help': 'Камера создаёт пазл и выдаёт готовое полотно фотографии',
+                  'screen.puzzleescape.library.help': 'Выбери фотопазл: справа отображается настоящий снимок',
                   'screen.puzzleescape.library.new': 'Новый фотопазл',
                   'screen.puzzleescape.library.recapture': 'Переснять',
                   'screen.puzzleescape.library.canvas': 'Выдать полотно',
+                  'screen.puzzleescape.library.pieces': 'Выдать детали пазла',
                   'screen.puzzleescape.library.selected': 'Выбран: %s',
+                  'screen.puzzleescape.library.preview': 'Предварительный просмотр',
+                  'screen.puzzleescape.library.preview_select': 'Выбери фотопазл',
+                  'screen.puzzleescape.library.preview_empty': 'Фотография ещё не готова',
+                  'screen.puzzleescape.library.preview_loading': 'Загрузка снимка…',
                   'screen.puzzleescape.create.title': 'Создание фотопазла',
                   'screen.puzzleescape.create.id': 'Название / ID',
                   'screen.puzzleescape.create.columns': 'Столбцы',
@@ -101,15 +107,22 @@ jobs:
                   'message.puzzleescape.gui_missing': 'Фотопазл %s не найден',
                   'message.puzzleescape.gui_recapture': 'Переснимаю фотопазл %s…',
                   'message.puzzleescape.gui_no_photo': 'Для %s ещё нет готовой фотографии',
-                  'message.puzzleescape.gui_canvas_given': 'Готовое полотно %s выдано в инвентарь'
+                  'message.puzzleescape.gui_canvas_given': 'Готовое полотно %s выдано в инвентарь',
+                  'message.puzzleescape.gui_pieces_given': 'Выдано деталей: %s для %s. На землю из-за заполненного инвентаря: %s',
+                  'message.puzzleescape.gui_kit_given': 'Комплект %s готов: полотно + %s деталей пазла'
               },
               'en_us.json': {
                   'screen.puzzleescape.library.title': 'PuzzleEscape — Photo Puzzles',
-                  'screen.puzzleescape.library.help': 'The camera creates a puzzle and gives a ready photo canvas',
+                  'screen.puzzleescape.library.help': 'Select a photo puzzle: the real capture is shown on the right',
                   'screen.puzzleescape.library.new': 'New photo puzzle',
                   'screen.puzzleescape.library.recapture': 'Recapture',
                   'screen.puzzleescape.library.canvas': 'Give canvas',
+                  'screen.puzzleescape.library.pieces': 'Give puzzle pieces',
                   'screen.puzzleescape.library.selected': 'Selected: %s',
+                  'screen.puzzleescape.library.preview': 'Preview',
+                  'screen.puzzleescape.library.preview_select': 'Select a photo puzzle',
+                  'screen.puzzleescape.library.preview_empty': 'The photo is not ready yet',
+                  'screen.puzzleescape.library.preview_loading': 'Loading capture…',
                   'screen.puzzleescape.create.title': 'Create photo puzzle',
                   'screen.puzzleescape.create.id': 'Name / ID',
                   'screen.puzzleescape.create.columns': 'Columns',
@@ -126,7 +139,9 @@ jobs:
                   'message.puzzleescape.gui_missing': 'Photo puzzle %s was not found',
                   'message.puzzleescape.gui_recapture': 'Recapturing photo puzzle %s…',
                   'message.puzzleescape.gui_no_photo': '%s does not have a finished photo yet',
-                  'message.puzzleescape.gui_canvas_given': 'Ready canvas %s was added to your inventory'
+                  'message.puzzleescape.gui_canvas_given': 'Ready canvas %s was added to your inventory',
+                  'message.puzzleescape.gui_pieces_given': 'Issued %s pieces for %s. Dropped because inventory was full: %s',
+                  'message.puzzleescape.gui_kit_given': 'Kit %s is ready: canvas + %s puzzle pieces'
               }
           }
           lang_dir = Path('project/src/main/resources/assets/puzzleescape/lang')
@@ -143,6 +158,39 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Verify photo kit and preview helpers
+        run: |
+          mkdir -p /tmp/pe-tests/dev/denis18uks/puzzleescape/core /tmp/pe-out
+          cat > /tmp/pe-tests/dev/denis18uks/puzzleescape/core/PhotoPuzzleKitPlanTest.java <<'EOF'
+          package dev.denis18uks.puzzleescape.core;
+          public final class PhotoPuzzleKitPlanTest {
+              public static void main(String[] args) {
+                  int[] pieces = PhotoPuzzleKitPlan.pieceIndices(4, 3);
+                  if (pieces.length != 12) throw new AssertionError("expected 12 pieces");
+                  for (int i = 0; i < pieces.length; i++) if (pieces[i] != i) throw new AssertionError("wrong index");
+                  if (PhotoPuzzleKitPlan.pieceIndices(32, 32).length != 1024) throw new AssertionError("expected 1024 pieces");
+              }
+          }
+          EOF
+          cat > /tmp/pe-tests/dev/denis18uks/puzzleescape/core/PreviewLayoutTest.java <<'EOF'
+          package dev.denis18uks.puzzleescape.core;
+          public final class PreviewLayoutTest {
+              public static void main(String[] args) {
+                  PreviewLayout.Size a = PreviewLayout.fit(1920, 1080, 220, 140);
+                  if (a.width() != 220 || a.height() != 124) throw new AssertionError("landscape preview fit failed: " + a);
+                  PreviewLayout.Size b = PreviewLayout.fit(1080, 1920, 220, 140);
+                  if (b.width() != 79 || b.height() != 140) throw new AssertionError("portrait preview fit failed: " + b);
+              }
+          }
+          EOF
+          javac -d /tmp/pe-out \
+            project/src/main/java/dev/denis18uks/puzzleescape/core/PhotoPuzzleKitPlan.java \
+            project/src/main/java/dev/denis18uks/puzzleescape/core/PreviewLayout.java \
+            /tmp/pe-tests/dev/denis18uks/puzzleescape/core/PhotoPuzzleKitPlanTest.java \
+            /tmp/pe-tests/dev/denis18uks/puzzleescape/core/PreviewLayoutTest.java
+          java -cp /tmp/pe-out dev.denis18uks.puzzleescape.core.PhotoPuzzleKitPlanTest
+          java -cp /tmp/pe-out dev.denis18uks.puzzleescape.core.PreviewLayoutTest
+
       - name: Set up Gradle 8.2
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -155,6 +203,6 @@ jobs:
       - name: Upload distributable jar
         uses: actions/upload-artifact@v4
         with:
-          name: PuzzleEscape-1.0.1-1.20.1
-          path: project/build/libs/PuzzleEscape-1.0.0-1.20.1.jar
+          name: PuzzleEscape-1.0.2-1.20.1
+          path: project/build/libs/PuzzleEscape-1.0.2-1.20.1.jar
           if-no-files-found: error
