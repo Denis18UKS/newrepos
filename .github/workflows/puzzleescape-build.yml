@@ -23,6 +23,31 @@ jobs:
           mkdir project
           tar -xzf PuzzleEscape-build-src.tar.gz -C project
 
+      - name: Apply 1.20.1 packet signature fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          entity = Path('project/src/main/java/dev/denis18uks/puzzleescape/entity/PuzzlePieceEntity.java')
+          text = entity.read_text()
+          text = text.replace('    @Override\n    public boolean collides() { return true; }\n\n', '')
+          entity.write_text(text)
+
+          for filename in ('PuzzleCanvasBlockEntity.java', 'PuzzleTriggerBlockEntity.java'):
+              path = Path('project/src/main/java/dev/denis18uks/puzzleescape/block') / filename
+              text = path.read_text()
+              if 'net.minecraft.network.listener.ClientPlayPacketListener;' not in text:
+                  text = text.replace(
+                      'import net.minecraft.nbt.NbtCompound;\n',
+                      'import net.minecraft.nbt.NbtCompound;\nimport net.minecraft.network.listener.ClientPlayPacketListener;\n'
+                  )
+              text = text.replace(
+                  'public @Nullable Packet<?> toUpdatePacket()',
+                  'public @Nullable Packet<ClientPlayPacketListener> toUpdatePacket()'
+              )
+              path.write_text(text)
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
