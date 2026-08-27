@@ -1,0 +1,28 @@
+name: PuzzleEscape Source Snapshot
+
+on:
+  push:
+    branches:
+      - puzzleescape-build
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source
+        run: |
+          cat puzzleescape-src-b64/part-* > PuzzleEscape-build-src.tar.gz.b64
+          base64 -d PuzzleEscape-build-src.tar.gz.b64 > PuzzleEscape-build-src.tar.gz
+          mkdir project
+          tar -xzf PuzzleEscape-build-src.tar.gz -C project
+          cp -a puzzleescape-overlay/src/main/java/. project/src/main/java/
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: PuzzleEscape-source-snapshot
+          path: project
+          if-no-files-found: error
