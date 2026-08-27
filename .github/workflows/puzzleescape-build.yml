@@ -48,6 +48,95 @@ jobs:
               path.write_text(text)
           PY
 
+      - name: Apply photo puzzle GUI overlay
+        run: |
+          cp -a puzzleescape-overlay/src/main/java/. project/src/main/java/
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          java = Path('project/src/main/java/dev/denis18uks/puzzleescape')
+
+          main = java / 'PuzzleEscape.java'
+          text = main.read_text(encoding='utf-8')
+          if 'PhotoPuzzleGuiPackets.registerServerReceivers();' not in text:
+              if 'import dev.denis18uks.puzzleescape.network.PhotoPuzzleGuiPackets;' not in text:
+                  marker = 'import dev.denis18uks.puzzleescape.network.ModPackets;\n'
+                  if marker in text:
+                      text = text.replace(marker, marker + 'import dev.denis18uks.puzzleescape.network.PhotoPuzzleGuiPackets;\n')
+                  else:
+                      text = text.replace('package dev.denis18uks.puzzleescape;\n', 'package dev.denis18uks.puzzleescape;\n\nimport dev.denis18uks.puzzleescape.network.PhotoPuzzleGuiPackets;\n')
+              text = text.replace('ModPackets.registerServerReceivers();', 'ModPackets.registerServerReceivers();\n        PhotoPuzzleGuiPackets.registerServerReceivers();')
+          main.write_text(text, encoding='utf-8')
+
+          client = java / 'client/PuzzleEscapeClient.java'
+          text = client.read_text(encoding='utf-8')
+          if 'PhotoPuzzleClientPackets.register();' not in text:
+              if 'import dev.denis18uks.puzzleescape.client.gui.PhotoPuzzleClientPackets;' not in text:
+                  text = text.replace('package dev.denis18uks.puzzleescape.client;\n', 'package dev.denis18uks.puzzleescape.client;\n\nimport dev.denis18uks.puzzleescape.client.gui.PhotoPuzzleClientPackets;\n')
+              text = text.replace('ClientPackets.register();', 'ClientPackets.register();\n        PhotoPuzzleClientPackets.register();')
+          client.write_text(text, encoding='utf-8')
+
+          translations = {
+              'ru_ru.json': {
+                  'screen.puzzleescape.library.title': 'PuzzleEscape — Фотопазлы',
+                  'screen.puzzleescape.library.help': 'Камера создаёт пазл и выдаёт готовое полотно фотографии',
+                  'screen.puzzleescape.library.new': 'Новый фотопазл',
+                  'screen.puzzleescape.library.recapture': 'Переснять',
+                  'screen.puzzleescape.library.canvas': 'Выдать полотно',
+                  'screen.puzzleescape.library.selected': 'Выбран: %s',
+                  'screen.puzzleescape.create.title': 'Создание фотопазла',
+                  'screen.puzzleescape.create.id': 'Название / ID',
+                  'screen.puzzleescape.create.columns': 'Столбцы',
+                  'screen.puzzleescape.create.rows': 'Строки',
+                  'screen.puzzleescape.create.capture': 'Создать и сфотографировать',
+                  'screen.puzzleescape.create.error_number': 'Размер должен быть числом',
+                  'screen.puzzleescape.create.error_id': 'ID: буквы, цифры, _, - и .',
+                  'screen.puzzleescape.create.error_size': 'Размер от 1×1 до 32×32',
+                  'item.puzzleescape.ready_canvas': 'Готовое полотно: %s',
+                  'message.puzzleescape.gui_invalid_id': 'Некорректный ID фотопазла',
+                  'message.puzzleescape.gui_invalid_size': 'Размер пазла должен быть от 1 до %s',
+                  'message.puzzleescape.gui_duplicate': 'Фотопазл %s уже существует',
+                  'message.puzzleescape.gui_created': 'Создан фотопазл %s (%sx%s). Делаю снимок…',
+                  'message.puzzleescape.gui_missing': 'Фотопазл %s не найден',
+                  'message.puzzleescape.gui_recapture': 'Переснимаю фотопазл %s…',
+                  'message.puzzleescape.gui_no_photo': 'Для %s ещё нет готовой фотографии',
+                  'message.puzzleescape.gui_canvas_given': 'Готовое полотно %s выдано в инвентарь'
+              },
+              'en_us.json': {
+                  'screen.puzzleescape.library.title': 'PuzzleEscape — Photo Puzzles',
+                  'screen.puzzleescape.library.help': 'The camera creates a puzzle and gives a ready photo canvas',
+                  'screen.puzzleescape.library.new': 'New photo puzzle',
+                  'screen.puzzleescape.library.recapture': 'Recapture',
+                  'screen.puzzleescape.library.canvas': 'Give canvas',
+                  'screen.puzzleescape.library.selected': 'Selected: %s',
+                  'screen.puzzleescape.create.title': 'Create photo puzzle',
+                  'screen.puzzleescape.create.id': 'Name / ID',
+                  'screen.puzzleescape.create.columns': 'Columns',
+                  'screen.puzzleescape.create.rows': 'Rows',
+                  'screen.puzzleescape.create.capture': 'Create and capture',
+                  'screen.puzzleescape.create.error_number': 'Size must be numeric',
+                  'screen.puzzleescape.create.error_id': 'ID: letters, digits, _, - and .',
+                  'screen.puzzleescape.create.error_size': 'Size must be 1×1 to 32×32',
+                  'item.puzzleescape.ready_canvas': 'Ready canvas: %s',
+                  'message.puzzleescape.gui_invalid_id': 'Invalid photo puzzle ID',
+                  'message.puzzleescape.gui_invalid_size': 'Puzzle size must be 1 to %s',
+                  'message.puzzleescape.gui_duplicate': 'Photo puzzle %s already exists',
+                  'message.puzzleescape.gui_created': 'Created photo puzzle %s (%sx%s). Capturing…',
+                  'message.puzzleescape.gui_missing': 'Photo puzzle %s was not found',
+                  'message.puzzleescape.gui_recapture': 'Recapturing photo puzzle %s…',
+                  'message.puzzleescape.gui_no_photo': '%s does not have a finished photo yet',
+                  'message.puzzleescape.gui_canvas_given': 'Ready canvas %s was added to your inventory'
+              }
+          }
+          lang_dir = Path('project/src/main/resources/assets/puzzleescape/lang')
+          for filename, values in translations.items():
+              path = lang_dir / filename
+              data = json.loads(path.read_text(encoding='utf-8'))
+              data.update(values)
+              path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -66,6 +155,6 @@ jobs:
       - name: Upload distributable jar
         uses: actions/upload-artifact@v4
         with:
-          name: PuzzleEscape-1.0.0-1.20.1
+          name: PuzzleEscape-1.0.1-1.20.1
           path: project/build/libs/PuzzleEscape-1.0.0-1.20.1.jar
           if-no-files-found: error
