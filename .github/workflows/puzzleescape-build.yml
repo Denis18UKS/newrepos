@@ -14,8 +14,11 @@ jobs:
       - name: Checkout staging branch
         uses: actions/checkout@v4
 
-      - name: Extract PuzzleEscape source
+      - name: Reconstruct PuzzleEscape source
         run: |
+          cat puzzleescape-src-b64/part-* > PuzzleEscape-build-src.tar.gz.b64
+          base64 -d PuzzleEscape-build-src.tar.gz.b64 > PuzzleEscape-build-src.tar.gz
+          gzip -t PuzzleEscape-build-src.tar.gz
           mkdir project
           tar -xzf PuzzleEscape-build-src.tar.gz -C project
 
