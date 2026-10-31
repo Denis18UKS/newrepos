@@ -1,0 +1,43 @@
+name: Build AI Voice Shield APK
+
+on:
+  push:
+    branches:
+      - 'ai-voice-shield-build-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack isolated Android project
+        run: |
+          mkdir -p ai-voice-shield
+          base64 -d ai-voice-shield-source.tar.gz.b64 | tar -xz -C ai-voice-shield
+          test -f ai-voice-shield/app/build.gradle
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Unit tests
+        run: gradle -p ai-voice-shield --no-daemon testDebugUnitTest
+      - name: Build debug APK
+        run: gradle -p ai-voice-shield --no-daemon assembleDebug
+      - name: Verify APK exists
+        run: test -s ai-voice-shield/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Voice-Shield-APK
+          path: ai-voice-shield/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
